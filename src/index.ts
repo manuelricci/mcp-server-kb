@@ -1,11 +1,12 @@
 import dotenv from 'dotenv';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
-import { validateEnvironment } from './lib/config.js';
-import { logger } from './lib/logger.js';
-import { searchKnowledgeBase } from './tools/search.js';
-import { readResource } from './tools/read.js';
+import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js';
+import {StdioServerTransport} from '@modelcontextprotocol/sdk/server/stdio.js';
+import {z} from 'zod';
+import {validateEnvironment} from './lib/config.js';
+import {logger} from './lib/logger.js';
+import {searchKnowledgeBase} from './tools/search.js';
+import {readResource} from './tools/read.js';
+import {startHttpServer} from "./http.js";
 
 dotenv.config();
 validateEnvironment();
@@ -54,12 +55,12 @@ Esempi di query efficaci:
                 ),
         },
     },
-    async ({ query, maxResults }) => {
+    async ({query, maxResults}) => {
         try {
             const results = await searchKnowledgeBase(query, maxResults);
             return {
                 content: [
-                    { type: 'text', text: JSON.stringify(results, null, 2) },
+                    {type: 'text', text: JSON.stringify(results, null, 2)},
                 ],
             };
         } catch (error) {
@@ -67,7 +68,7 @@ Esempi di query efficaci:
                 error instanceof Error ? error.message : 'Unknown error';
             logger.error(`search_kb failed: ${message}`);
             return {
-                content: [{ type: 'text', text: `Error: ${message}` }],
+                content: [{type: 'text', text: `Error: ${message}`}],
                 isError: true,
             };
         }
@@ -99,18 +100,18 @@ Esempi di utilizzo:
                 ),
         },
     },
-    async ({ path: filePath }) => {
+    async ({path: filePath}) => {
         try {
             const content = await readResource(filePath);
             return {
-                content: [{ type: 'text', text: content }],
+                content: [{type: 'text', text: content}],
             };
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : 'Unknown error';
             logger.error(`read_resource failed: ${message}`);
             return {
-                content: [{ type: 'text', text: `Error: ${message}` }],
+                content: [{type: 'text', text: `Error: ${message}`}],
                 isError: true,
             };
         }
@@ -118,10 +119,16 @@ Esempi di utilizzo:
 );
 
 try {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    logger.info('MCP Knowledge Base Server running on stdio');
-    logger.info(`Knowledge base path: ${process.env.KB_ROOT_PATH}`);
+    const transportType = process.env.MCP_TRANSPORT || 'stdio';
+    if (transportType === "http") {
+        const PORT = parseInt(process.env.PORT || '3000', 10);
+        startHttpServer(server, PORT);
+    } else {
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        logger.info('MCP Knowledge Base Server running on stdio');
+        logger.info(`Knowledge base path: ${process.env.KB_ROOT_PATH}`);
+    }
 } catch (error) {
     logger.error('Fatal error starting server:', error);
     process.exit(1);
