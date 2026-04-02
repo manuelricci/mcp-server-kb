@@ -11,8 +11,13 @@ export function startHttpServer(server: McpServer, port: number) {
     if (AUTH_TOKEN) {
         app.use('/mcp', (req, res, next) => {
             const header = req.headers.authorization;
+            const queryToken = req.query.token as string | undefined;
 
-            if (!header || header !== `Bearer ${AUTH_TOKEN}`) {
+            const isValid =
+                (header && header === `Bearer ${AUTH_TOKEN}`) ||
+                (queryToken && queryToken === AUTH_TOKEN);
+
+            if (!isValid) {
                 logger.warn(`Auth failed from ${req.ip}`);
                 res.status(401).json({ error: 'Unauthorized' });
                 return;
@@ -21,7 +26,7 @@ export function startHttpServer(server: McpServer, port: number) {
             next();
         });
 
-        logger.info('Bearer token authentication enabled');
+        logger.info('Token authentication enabled');
     } else {
         logger.warn('MCP_AUTH_TOKEN not set — server is open to anyone!');
     }
