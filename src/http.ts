@@ -1,9 +1,9 @@
 import express from 'express';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { logger } from './lib/logger.js';
+import type { CreateServerFn } from './index.js';
 
-export function startHttpServer(server: McpServer, port: number) {
+export function startHttpServer(createServer: CreateServerFn, port: number) {
     const app = express();
 
     const AUTH_TOKEN = process.env.MCP_AUTH_TOKEN;
@@ -40,6 +40,8 @@ export function startHttpServer(server: McpServer, port: number) {
             sessionIdGenerator: undefined,
         });
 
+        // In modalità stateless, ogni richiesta ha il suo server MCP
+        const server = createServer();
         await server.connect(transport);
         await transport.handleRequest(req, res);
     });
